@@ -53,7 +53,7 @@ Attention is used to focus processing on a particular region of input.
 The `attend` function provided by this package implements the most
 common attention mechanism [[1](#1), [2](#2), [3](#3)], which produces
 an output by taking a convex combination of value vectors with weights
-from by a scoring function operating over pairs of query and context vectors.
+from a scoring function operating over pairs of query and context vectors.
 
 Given query vector `q`, context vectors `c_1,...,c_n`, and value vectors
 `v_1,...,v_n` the attention score of `q` with `c_i` is given by
