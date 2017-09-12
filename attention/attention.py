@@ -1,32 +1,36 @@
 from torch import FloatTensor
 from torch.autograd import Variable
-from torch.nn.functional import softmax
+from torch.nn.functional import sigmoid, softmax
 
 
-def fill_query_mask(mask, sizes):
-    """Fill attention mask for variable length queries.
+def mask3d(value, sizes):
+    """Mask entries in value with 0 based on sizes.
 
     Args
     ----
-    mask: Tensor of size (B, N, D)
-        Tensor to fill with mask values. 
-    sizes: list[int]
-        List giving the size of the query for each item in
-        the batch. Positions beyond each size will be masked.
+    value: Tensor of size (B, N, D)
+        Tensor to be masked. 
+    sizes: list of int
+        List giving the number of valid values for each item
+        in the batch. Positions beyond each size will be masked.
+
+    Returns
+    -------
+    value:
+        Masked value.
     """
-    unmasked_value = 1
-    masked_value = 0
-    mask.fill_(unmasked_value)
-
-    n_query = mask.size(1)
+    v_mask = 0
+    v_unmask = 1
+    mask = value.data.new(value.size()).fill_(v_unmask)
+    n = mask.size(1)
     for i, size in enumerate(sizes):
-        if size < n_query:
-            mask[i,size:,:] = masked_value
-    return mask
+        if size < n:
+            mask[i,size:,:] = v_mask
+    return Variable(mask) * value
 
 
-def fill_context_mask(mask, sizes):
-    """Fill attention mask for a variable length context.
+def fill_context_mask(mask, sizes, v_mask, v_unmask):
+    """Fill attention mask inplace for a variable length context.
 
     Args
     ----
@@ -35,15 +39,21 @@ def fill_context_mask(mask, sizes):
     sizes: list[int]
         List giving the size of the context for each item in
         the batch. Positions beyond each size will be masked.
-    """
-    unmasked_value = 0
-    masked_value = -float('inf')
-    mask.fill_(unmasked_value)
+    v_mask: float
+        Value to use for masked positions.
+    v_unmask: float
+        Value to use for unmasked positions.
 
+    Returns
+    -------
+    mask:
+        Filled with values in {v_mask, v_unmask}
+    """
+    mask.fill_(v_unmask)
     n_context = mask.size(2)
     for i, size in enumerate(sizes):
         if size < n_context:
-            mask[i,:,size:] = masked_value
+            mask[i,:,size:] = v_mask
     return mask
 
 
@@ -64,8 +74,8 @@ def dot(a, b):
 
 
 def attend(
-    query, context, value=None, f='dot', 
-    query_sizes=None, query_mask=None,
+    query, context, value=None,
+    score='dot', normalize='softmax',
     context_sizes=None, context_mask=None,
     return_weight=False):
     """Attend to value (or context) by scoring each query and context.
@@ -77,27 +87,27 @@ def attend(
     context: Variable of size (B, N, D2)
         Batch of N context vectors.
     value: Variable of size (B, N, P), default=None
-        If given, the output vectors will be convex
+        If given, the output vectors will be weighted
         combinations of the value vectors. Otherwise,
         the context vectors will be used.
-    f: callable or str, default='dot'
-        If f == 'dot' use dot product attention.
-        In this case D1 must be equal to D2.
-        Otherwise, f should be a callable that given query
-        and context returns a Variable of shape (B, M, N).
-    query_mask: Tensor of (B, M, N), default=None
-        A Tensor to use to mask query. Unmasked entries
-        should be 0 and masked entries should be -inf.
-    query_sizes: list[int], default=None,
-        List giving the size of query for each item in the
-        batch. If query_mask or query_sizes are not given,
-        context is assumed to have fixed size.
+    score: str or callable, default='dot'
+        If score == 'dot', scores are computed
+        as the dot product between context and
+        query vectors. This Requires D1 == D2.
+        Otherwise, score should be a callable:
+               query  context      score
+            (B,M,D1) (B,N,D2) -> (B,M,N)
+    normalize: str, default='softmax'
+        One of 'softmax', 'sigmoid', or 'identity'.
+        Function used to map scores to weights.
     context_mask: Tensor of (B, M, N), default=None
-        A Tensor to use to mask context. Unmasked entries
-        should be 1 and masked entries should be 0.
+        A Tensor used to mask context. Masked
+        and unmasked entries should be filled 
+        appropriately for the normalization function.
     context_sizes: list[int], default=None,
-        List giving the size of context for each item in the
-        batch. If context_mask or context_sizes are not given,
+        List giving the size of context for each item
+        in the batch and used to compute a context_mask.
+        If context_mask or context_sizes are not given,
         context is assumed to have fixed size.
     return_weight: bool, default=False
         If True, return the attention weight Tensor.
@@ -108,12 +118,13 @@ def attend(
         If return_weight is False.
     weight, output: Variable of size (B, M, N), Variable of size (B, M, P)
         If return_weight is True.
+        
     
     About
     -----
     Attention is used to focus processing on a particular region of input.
     This function implements the most common attention mechanism [1, 2, 3],
-    which produces an output by taking a convex combination of value vectors
+    which produces an output by taking a weighted combination of value vectors
     with weights from by a scoring function operating over pairs of query and
     context vectors.
 
@@ -126,12 +137,13 @@ def attend(
 
         s_i = q^T c_i
 
-    The scores are normalized using a softmax function.
+    The scores are passed through a normalization functions g.
+    This is normally the softmax function.
 
-        w_i = softmax(s_1,...,s_n)_i
+        w_i = g(s_1,...,s_n)_i
 
-    Finally, the output is computed as a convex combination
-    of the values with the normalized score weights.
+    Finally, the output is computed as a weighted
+    combination of the values with the normalized scores.
 
         z = sum_{i=1}^n w_i * v_i
 
@@ -144,21 +156,25 @@ def attend(
     `N` context vectors of dimension `D2`, 
     and optionally `N` value vectors of dimension `P`.
 
-    Variable Length
-    ---------------
-    If the number of context vectors varies within a batch,
-    a context can be ignored by adding negative infinity to
-    the corresponding score. This will cause the softmax to
-    evaluate to zero at those locations. Likewise, query vectors
-    can be ignored by multiplying their normalized score by zero.
+    Variable Length Contexts
+    ------------------------    
+    If the number of context vectors varies within a batch, a context
+    can be ignored by forcing the corresponding weight to be zero.
 
-    A context mask, with entries in `{-inf, 0}`, and query mask,
-    with entries in `{0, 1}`, can be passed to this function.
-    The masks should have size `(B, M, N)`.
+    In the case of the softmax, this can be achieved by adding negative
+    infinity to the corresponding score before normalization.
+    Similarly, for elementwise normalization functions the weights can
+    be multiplied by an appropriate {0,1} mask after normalization.
 
-    Alternatively, lists can be passed giving the size of the query
-    and context for each item in the batch. Appropriate masks will
-    be created from these lists.
+    To facilitate the above behavior, a context mask, with entries
+    in `{-inf, 0}` or `{0, 1}` depending on the normalization function,
+    can be passed to this function. The masks should have size `(B, M, N)`.
+
+    Alternatively, a list can be passed giving the size of the context for
+    each item in the batch. Appropriate masks will be created from these lists.
+
+    Note that the size of output does not depend on the number of context vectors.
+    Because of this context positions are truly unaccounted for in the output.
 
     References
     ----------
@@ -226,35 +242,36 @@ def attend(
     batch_size = batch_size_q
 
     # Compute scores
-    if f == 'dot':
+    if score == 'dot':
         s = dot(q, c)
-    elif callable(f):
-        s = f(q, c)
+    elif callable(score):
+        s = score(q, c)
     else:
-        raise ValueError('unknown score function: {}'.format(f))
+        raise ValueError('unknown score function "{}"'.format(f))
 
-    # Apply context mask to scores
-    mask = None
-    if context_mask is not None:
-        s = Variable(context_mask) + s
-    elif context_sizes is not None:
-        mask = s.data.new(batch_size, n_q, n_c)
-        mask = fill_context_mask(mask, sizes=context_sizes)
-        s = Variable(mask) + s
-
-    # Normalize scores
-    s_flat = s.view(batch_size * n_q, n_c)
-    w_flat = softmax(s_flat)
-    w = w_flat.view(batch_size, n_q, n_c)
-
-    # Apply query mask to weights
-    if query_mask is not None:
-        w = Variable(query_mask) + w
-    elif query_sizes is not None:
-        if mask is None:
+    # Normalize scores and mask contexts
+    if normalize == 'softmax':
+        if context_mask is not None:
+            s = Variable(context_mask) + s
+        elif context_sizes is not None:
             mask = s.data.new(batch_size, n_q, n_c)
-        mask = fill_query_mask(mask, sizes=query_sizes)
-        w = Variable(mask) * w
+            mask = fill_context_mask(mask, sizes=context_sizes, v_mask=float('-inf'), v_unmask=0)
+            s = Variable(mask) + s
+        s_flat = s.view(batch_size * n_q, n_c)
+        w_flat = softmax(s_flat)
+        w = w_flat.view(batch_size, n_q, n_c)
+
+    elif normalize == 'sigmoid' or w == 'identity':
+        w = sigmoid(s) if w == 'sigmoid' else s
+        if context_mask is not None:
+            w = Variable(context_mask) * w
+        elif context_sizes is not None:
+            mask = s.data.new(batch_size, n_q, n_c)
+            mask = fill_context_mask(mask, sizes=context_sizes, v_mask=0, v_unmask=1)
+            w = Variable(mask) * w
+
+    else:
+        raise ValueError('uknown normalize function "{}"'.format(normalize))
 
     # Combine
     z = w.bmm(v)
