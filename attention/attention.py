@@ -74,10 +74,10 @@ def dot(a, b):
 
 
 def attend(
-    query, context, value=None,
-    score='dot', normalize='softmax',
-    context_sizes=None, context_mask=None,
-    return_weight=False):
+        query, context, value=None,
+        score='dot', normalize='softmax',
+        context_sizes=None, context_mask=None,
+        return_weight=False):
     """Attend to value (or context) by scoring each query and context.
 
     Args
