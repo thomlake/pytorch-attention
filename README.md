@@ -51,30 +51,30 @@ About
 -----
 Attention is used to focus processing on a particular region of input.
 The `attend` function provided by this package implements the most
-common attention mechanism [[1](#1), [2](#2), [3](#3)], which produces
+common attention mechanism [[1](#1), [2](#2), [3](#3), [4](#4)], which produces
 an output by taking a weighted combination of value vectors with weights
 from a scoring function operating over pairs of query and context vectors.
 
-Given query vector `q`, context vectors `c_1,...,c_n`, and value vectors
-`v_1,...,v_n` the attention score of `q` with `c_i` is given by
+Given query vector <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/e73485aa867794d51ccd8725055d03a3.svg?invert_in_darkmode" align=middle width=9.93993pt height=14.55729pt/>, context vectors <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/39d2a848a943a7f5ec27272dad27c784.svg?invert_in_darkmode" align=middle width=68.70633pt height=14.55729pt/>, and value vectors
+<img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/1eb39a281b1e66935a51005b6beb9dbe.svg?invert_in_darkmode" align=middle width=72.878355pt height=14.55729pt/> the attention score of <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/e73485aa867794d51ccd8725055d03a3.svg?invert_in_darkmode" align=middle width=9.93993pt height=14.55729pt/> with <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/28e6b84adb66aca59d04ec9e227bfd3f.svg?invert_in_darkmode" align=middle width=13.00398pt height=14.55729pt/> is given by
 
-    s_i = f(q, c_i)
+<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/a5a09669219f681bb51e176b190b0e4a.svg?invert_in_darkmode" align=middle width=88.61622pt height=16.376943pt/></p>
 
-Frequently `f` is given by the dot product between query and context vectors.
+Frequently <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/190083ef7a1625fbc75f243cffb9c96d.svg?invert_in_darkmode" align=middle width=9.780705pt height=22.74591pt/> is given by the dot product between query and context vectors.
 
-    s_i = q^T c_i
+<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/39c9d05724010ea29be9eb321b1422ec.svg?invert_in_darkmode" align=middle width=68.318745pt height=17.805315pt/></p>
 
-The scores are passed through a normalization functions `g`. This is normally the softmax function.
+The scores are passed through a normalization functions <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/3cf4fbd05970446973fc3d9fa3fe3c41.svg?invert_in_darkmode" align=middle width=8.398995pt height=14.10255pt/> (normally the softmax function).
 
-    w_i = g(s_1,...,s_n)_i
+<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/a5d4c0a87edcc90e9dc7bb8a1845e86a.svg?invert_in_darkmode" align=middle width=124.74033pt height=16.376943pt/></p>
 
-Finally, the output is computed as a convex combination
-of the values with the normalized score weights.
+Finally, the output is computed as a weighted sum
+of the value vectors.
 
-    z = sum_{i=1}^n w_i * v_i
+<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/5397f1268e113895a997a61e51165ffc.svg?invert_in_darkmode" align=middle width=103.98927pt height=44.878845pt/></p>
 
-In many applications [[4](#4), [5](#5)] attention is applied
-to the context vectors themselves, `v_i = c_i`.
+In many applications [[1](#1), [4](#4), [5](#5)] attention is applied
+to the context vectors themselves, <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/da2cf8b162672dc46adcace06ec2740a.svg?invert_in_darkmode" align=middle width=50.28639pt height=14.55729pt/>.
 
 Sizes
 -----
@@ -106,7 +106,16 @@ Because of this context positions are truly unaccounted for in the output.
 
 References
 ----------
-#### [[1]](https://arxiv.org/abs/1410.5401)
+#### [[1]](https://arxiv.org/abs/1409.0473)
+
+    @article{bahdanau2014neural,
+        title={Neural machine translation by jointly learning to align and translate},
+        author={Bahdanau, Dzmitry and Cho, Kyunghyun and Bengio, Yoshua},
+        journal={arXiv preprint arXiv:1409.0473},
+        year={2014}
+    }
+
+#### [[2]](https://arxiv.org/abs/1410.5401)
     @article{graves2014neural,
       title={Neural turing machines},
       author={Graves, Alex and Wayne, Greg and Danihelka, Ivo},
@@ -114,7 +123,7 @@ References
       year={2014}
     }
 
-#### [[2]](https://arxiv.org/abs/1503.08895)
+#### [[3]](https://arxiv.org/abs/1503.08895)
 
     @inproceedings{sukhbaatar2015end,
         title={End-to-end memory networks},
@@ -124,7 +133,7 @@ References
         year={2015}
     }
 
-#### [[3]](https://distill.pub/2016/augmented-rnns/)
+#### [[4]](https://distill.pub/2016/augmented-rnns/)
 
     @article{olah2016attention,
         title={Attention and augmented recurrent neural networks},
@@ -134,15 +143,6 @@ References
         number={9},
         pages={e1},
         year={2016}
-    }
-
-#### [[4]](https://arxiv.org/abs/1409.0473)
-
-    @article{bahdanau2014neural,
-        title={Neural machine translation by jointly learning to align and translate},
-        author={Bahdanau, Dzmitry and Cho, Kyunghyun and Bengio, Yoshua},
-        journal={arXiv preprint arXiv:1409.0473},
-        year={2014}
     }
 
 #### [[5]](https://arxiv.org/abs/1506.03134)
