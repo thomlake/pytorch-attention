@@ -15,8 +15,8 @@ def Volatile(x):
 def test_apply_mask_3d():
     batch_size, m, n = 3, 4, 5
     sizes = [4, 3, 2]
-    values = Volatile(torch.randn(batch_size, m, n))
-    masked = attention.mask3d(values, sizes=sizes)
+    values = torch.randn(batch_size, m, n)
+    masked = attention.mask3d(Volatile(values), sizes=sizes).data
     assert values.size() == masked.size() == (batch_size, m, n)
     for i in range(batch_size):
         for j in range(m):

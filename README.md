@@ -14,18 +14,18 @@ def attend(
         Batch of N context vectors.
     value: Variable of size (B, N, P), default=None
         If given, the output vectors will be weighted
-        combinations of the value vectors. Otherwise,
-        the context vectors will be used.
+        combinations of the value vectors.
+        Otherwise, the context vectors will be used.
     score: str or callable, default='dot'
         If score == 'dot', scores are computed
         as the dot product between context and
         query vectors. This Requires D1 == D2.
         Otherwise, score should be a callable:
-               query  context      score
+             query    context     score
             (B,M,D1) (B,N,D2) -> (B,M,N)
     normalize: str, default='softmax'
         One of 'softmax', 'sigmoid', or 'identity'.
-        Function used to map scores to weights.
+        Name of function used to map scores to weights.
     context_mask: Tensor of (B, M, N), default=None
         A Tensor used to mask context. Masked
         and unmasked entries should be filled 
@@ -55,26 +55,34 @@ common attention mechanism [[1](#1), [2](#2), [3](#3), [4](#4)], which produces
 an output by taking a weighted combination of value vectors with weights
 from a scoring function operating over pairs of query and context vectors.
 
-Given query vector <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/e73485aa867794d51ccd8725055d03a3.svg?invert_in_darkmode" align=middle width=9.93993pt height=14.55729pt/>, context vectors <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/39d2a848a943a7f5ec27272dad27c784.svg?invert_in_darkmode" align=middle width=68.70633pt height=14.55729pt/>, and value vectors
-<img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/1eb39a281b1e66935a51005b6beb9dbe.svg?invert_in_darkmode" align=middle width=72.878355pt height=14.55729pt/> the attention score of <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/e73485aa867794d51ccd8725055d03a3.svg?invert_in_darkmode" align=middle width=9.93993pt height=14.55729pt/> with <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/28e6b84adb66aca59d04ec9e227bfd3f.svg?invert_in_darkmode" align=middle width=13.00398pt height=14.55729pt/> is given by
+Given query vector `q`, context vectors `c_1,...,c_n`, and value vectors
+`v_1,...,v_n` the attention score of `q` with `c_i` is given by
 
-<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/a5a09669219f681bb51e176b190b0e4a.svg?invert_in_darkmode" align=middle width=88.61622pt height=16.376943pt/></p>
+```
+    s_i = f(q, c_i)
+```
 
-Frequently <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/190083ef7a1625fbc75f243cffb9c96d.svg?invert_in_darkmode" align=middle width=9.780705pt height=22.74591pt/> is given by the dot product between query and context vectors.
+Frequently `f` takes the form of a dot product between query and context vectors.
 
-<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/39c9d05724010ea29be9eb321b1422ec.svg?invert_in_darkmode" align=middle width=68.318745pt height=17.805315pt/></p>
+```
+    s_i = q^T c_i
+```
 
-The scores are passed through a normalization functions <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/3cf4fbd05970446973fc3d9fa3fe3c41.svg?invert_in_darkmode" align=middle width=8.398995pt height=14.10255pt/> (normally the softmax function).
+The scores are passed through a normalization functions `g` (normally the softmax function).
 
-<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/a5d4c0a87edcc90e9dc7bb8a1845e86a.svg?invert_in_darkmode" align=middle width=124.74033pt height=16.376943pt/></p>
+```
+    w_i = g(s_1,...,s_n)_i
+```
 
 Finally, the output is computed as a weighted sum
 of the value vectors.
 
-<p align="center"><img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/5397f1268e113895a997a61e51165ffc.svg?invert_in_darkmode" align=middle width=103.98927pt height=44.878845pt/></p>
+```
+    z = \sum_{i=1}^n w_i * v_i
+```
 
 In many applications [[1](#1), [4](#4), [5](#5)] attention is applied
-to the context vectors themselves, <img src="https://rawgit.com/thomlake/pytorch-attention/None/svgs/da2cf8b162672dc46adcace06ec2740a.svg?invert_in_darkmode" align=middle width=50.28639pt height=14.55729pt/>.
+to the context vectors themselves, `v_i = c_i$.
 
 Sizes
 -----

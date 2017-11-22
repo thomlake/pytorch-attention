@@ -88,18 +88,18 @@ def attend(
         Batch of N context vectors.
     value: Variable of size (B, N, P), default=None
         If given, the output vectors will be weighted
-        combinations of the value vectors. Otherwise,
-        the context vectors will be used.
+        combinations of the value vectors.
+        Otherwise, the context vectors will be used.
     score: str or callable, default='dot'
         If score == 'dot', scores are computed
         as the dot product between context and
         query vectors. This Requires D1 == D2.
         Otherwise, score should be a callable:
-               query  context      score
+             query    context     score
             (B,M,D1) (B,N,D2) -> (B,M,N)
     normalize: str, default='softmax'
         One of 'softmax', 'sigmoid', or 'identity'.
-        Function used to map scores to weights.
+        Name of function used to map scores to weights.
     context_mask: Tensor of (B, M, N), default=None
         A Tensor used to mask context. Masked
         and unmasked entries should be filled 
@@ -257,6 +257,7 @@ def attend(
             mask = s.data.new(batch_size, n_q, n_c)
             mask = fill_context_mask(mask, sizes=context_sizes, v_mask=float('-inf'), v_unmask=0)
             s = Variable(mask) + s
+
         s_flat = s.view(batch_size * n_q, n_c)
         w_flat = softmax(s_flat)
         w = w_flat.view(batch_size, n_q, n_c)
