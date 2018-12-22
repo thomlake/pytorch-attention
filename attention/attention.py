@@ -262,8 +262,8 @@ def attend(
         w_flat = softmax(s_flat)
         w = w_flat.view(batch_size, n_q, n_c)
 
-    elif normalize == 'sigmoid' or w == 'identity':
-        w = sigmoid(s) if w == 'sigmoid' else s
+    elif normalize == 'sigmoid' or normalize == 'identity':
+        w = sigmoid(s) if normalize == 'sigmoid' else s
         if context_mask is not None:
             w = Variable(context_mask) * w
         elif context_sizes is not None:
@@ -272,7 +272,7 @@ def attend(
             w = Variable(mask) * w
 
     else:
-        raise ValueError('uknown normalize function "{}"'.format(normalize))
+        raise ValueError('unknown normalize function "{}"'.format(normalize))
 
     # Combine
     z = w.bmm(v)
