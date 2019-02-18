@@ -1,1 +1,1 @@
-from attention import attend
+from . attention import attend

@@ -73,11 +73,9 @@ def dot(a, b):
     return a.bmm(b.transpose(1, 2))
 
 
-def attend(
-        query, context, value=None,
-        score='dot', normalize='softmax',
-        context_sizes=None, context_mask=None,
-        return_weight=False):
+def attend(query, context, value=None, score='dot', normalize='softmax',
+           context_sizes=None, context_mask=None, return_weight=False
+           ):
     """Attend to value (or context) by scoring each query and context.
 
     Args
@@ -174,7 +172,7 @@ def attend(
     each item in the batch. Appropriate masks will be created from these lists.
 
     Note that the size of output does not depend on the number of context vectors.
-    Because of this context positions are truly unaccounted for in the output.
+    Because of this, context positions are truly unaccounted for in the output.
 
     References
     ----------
@@ -247,32 +245,41 @@ def attend(
     elif callable(score):
         s = score(q, c)
     else:
-        raise ValueError('unknown score function "{}"'.format(f))
+        raise ValueError(f'unknown score function: {score}')
 
     # Normalize scores and mask contexts
     if normalize == 'softmax':
         if context_mask is not None:
-            s = Variable(context_mask) + s
+            s = context_mask + s
+
         elif context_sizes is not None:
-            mask = s.data.new(batch_size, n_q, n_c)
-            mask = fill_context_mask(mask, sizes=context_sizes, v_mask=float('-inf'), v_unmask=0)
-            s = Variable(mask) + s
+            context_mask = s.data.new(batch_size, n_q, n_c)
+            context_mask = fill_context_mask(context_mask,
+                                             sizes=context_sizes,
+                                             v_mask=float('-inf'),
+                                             v_unmask=0
+                                             )
+            s = context_mask + s
 
         s_flat = s.view(batch_size * n_q, n_c)
-        w_flat = softmax(s_flat)
+        w_flat = softmax(s_flat, dim=1)
         w = w_flat.view(batch_size, n_q, n_c)
 
     elif normalize == 'sigmoid' or normalize == 'identity':
         w = sigmoid(s) if normalize == 'sigmoid' else s
         if context_mask is not None:
-            w = Variable(context_mask) * w
+            w = context_mask * w
         elif context_sizes is not None:
-            mask = s.data.new(batch_size, n_q, n_c)
-            mask = fill_context_mask(mask, sizes=context_sizes, v_mask=0, v_unmask=1)
-            w = Variable(mask) * w
+            context_mask = s.data.new(batch_size, n_q, n_c)
+            context_mask = fill_context_mask(context_mask,
+                                             sizes=context_sizes,
+                                             v_mask=0,
+                                             v_unmask=1
+                                             )
+            w = context_mask * w
 
     else:
-        raise ValueError('unknown normalize function "{}"'.format(normalize))
+        raise ValueError(f'unknown normalize function: {normalize}')
 
     # Combine
     z = w.bmm(v)

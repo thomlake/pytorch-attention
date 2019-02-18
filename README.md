@@ -1,9 +1,7 @@
 ```python
-def attend(
-        query, context, value=None,
-        score='dot', normalize='softmax',
-        context_sizes=None, context_mask=None,
-        return_weight=False):
+def attend(query, context, value=None, score='dot', normalize='softmax',
+           context_sizes=None, context_mask=None, return_weight=False
+           ):
     """Attend to value (or context) by scoring each query and context.
 
     Args
@@ -47,6 +45,19 @@ def attend(
     """
 ```
 
+Install
+-------
+```bash
+python setup.py install
+```
+
+Test
+----
+```bash
+python -m pytest
+```
+Tested with pytorch 1.0.0
+
 About
 -----
 Attention is used to focus processing on a particular region of input.
@@ -74,8 +85,7 @@ The scores are passed through a normalization functions `g` (normally the softma
     w_i = g(s_1,...,s_n)_i
 ```
 
-Finally, the output is computed as a weighted sum
-of the value vectors.
+Finally, the output is computed as a weighted sum of the value vectors.
 
 ```
     z = \sum_{i=1}^n w_i * v_i
@@ -110,7 +120,7 @@ Alternatively, a list can be passed giving the size of the context for
 each item in the batch. Appropriate masks will be created from these lists.
 
 Note that the size of output does not depend on the number of context vectors.
-Because of this context positions are truly unaccounted for in the output.
+Because of this, context positions are truly unaccounted for in the output.
 
 References
 ----------

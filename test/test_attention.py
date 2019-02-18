@@ -2,21 +2,14 @@ import numpy as np
 import pytest
 
 import torch
-from torch import FloatTensor
-from torch.autograd import Variable
-
 from attention import attention
-
-
-def Volatile(x):
-    return Variable(x, volatile=True)
 
 
 def test_apply_mask_3d():
     batch_size, m, n = 3, 4, 5
     sizes = [4, 3, 2]
     values = torch.randn(batch_size, m, n)
-    masked = attention.mask3d(Volatile(values), sizes=sizes).data
+    masked = attention.mask3d(values, sizes=sizes).data
     assert values.size() == masked.size() == (batch_size, m, n)
     for i in range(batch_size):
         for j in range(m):
@@ -50,11 +43,14 @@ def test_dot():
     batch_size, n_q, n_c, d = 31, 18, 15, 22
     q = np.random.normal(0, 1, (batch_size, n_q, d))
     c = np.random.normal(0, 1, (batch_size, n_c, d))
-    s = attention.dot(
-        Volatile(torch.from_numpy(q)),
-        Volatile(torch.from_numpy(c))).data.numpy()
+
+    s = attention.dot(torch.from_numpy(q),
+                      torch.from_numpy(c)
+                      )
+    s = s.data.numpy()
 
     assert s.shape == (batch_size, n_q, n_c)
+
     for i in range(batch_size):
         for j in range(n_q):
             for k in range(n_c):
@@ -69,9 +65,11 @@ def test_dot():
 def test_attention(batch_size, n_q, n_c, d):
     q = np.random.normal(0, 1, (batch_size, n_q, d))
     c = np.random.normal(0, 1, (batch_size, n_c, d))
-    w_out, z_out = attention.attend(
-            Volatile(torch.from_numpy(q)),
-            Volatile(torch.from_numpy(c)), return_weight=True)
+
+    w_out, z_out = attention.attend(torch.from_numpy(q),
+                                    torch.from_numpy(c),
+                                    return_weight=True
+                                    )
     w_out = w_out.data.numpy()
     z_out = z_out.data.numpy()
 
@@ -101,10 +99,12 @@ def test_attention_values(batch_size, n_q, n_c, d, p):
     q = np.random.normal(0, 1, (batch_size, n_q, d))
     c = np.random.normal(0, 1, (batch_size, n_c, d))
     v = np.random.normal(0, 1, (batch_size, n_c, p))
-    w_out, z_out = attention.attend(
-            Volatile(torch.from_numpy(q)),
-            Volatile(torch.from_numpy(c)),
-            value=Volatile(torch.from_numpy(v)), return_weight=True)
+
+    w_out, z_out = attention.attend(torch.from_numpy(q),
+                                    torch.from_numpy(c),
+                                    value=torch.from_numpy(v),
+                                    return_weight=True
+                                    )
     w_out = w_out.data.numpy()
     z_out = z_out.data.numpy()
 
@@ -133,10 +133,11 @@ def test_attention_masked(batch_size, n_q, n_c, d, context_sizes):
     q = np.random.normal(0, 1, (batch_size, n_q, d))
     c = np.random.normal(0, 1, (batch_size, n_c, d))
 
-    w_out, z_out = attention.attend(
-        Volatile(torch.from_numpy(q)),
-        Volatile(torch.from_numpy(c)),
-        context_sizes=context_sizes, return_weight=True)
+    w_out, z_out = attention.attend(torch.from_numpy(q),
+                                    torch.from_numpy(c),
+                                    context_sizes=context_sizes,
+                                    return_weight=True
+                                    )
     w_out = w_out.data.numpy()
     z_out = z_out.data.numpy()
 
